@@ -13,7 +13,8 @@
     FileText,
     MoreVertical,
     Edit3,
-    Github
+    Github,
+    Wrap
   } from 'lucide-svelte';
   import { appStore, activeDocument } from './stores';
   import type { Document } from './stores';
@@ -208,6 +209,12 @@
       e.preventDefault();
       appStore.toggleTheme();
     }
+    
+    // Ctrl/Cmd + W: Toggle word wrap
+    if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+      e.preventDefault();
+      appStore.toggleWordWrap();
+    }
   }
   
   onMount(() => {
@@ -271,6 +278,10 @@
     </div>
     
     <div class="header-actions">
+      <button class="btn btn-icon" on:click={() => appStore.toggleWordWrap()} title="Toggle word wrap (Ctrl+W)">
+        <Wrap size={18} />
+      </button>
+      
       <button class="btn btn-icon" on:click={handleDownload} title="Download markdown (Ctrl+S)">
         <Download size={18} />
       </button>
@@ -301,6 +312,7 @@
         <textarea
           bind:this={editorTextarea}
           class="editor-textarea"
+          class:word-wrap-enabled={$appStore.wordWrap}
           value={currentDoc?.content || ''}
           on:input={handleContentChange}
           on:scroll={handleEditorScroll}
@@ -359,6 +371,10 @@
       {/if}
     </div>
     <div class="status-right">
+      {#if $appStore.wordWrap}
+        <span class="status-item">Wrap</span>
+        <span class="status-separator">|</span>
+      {/if}
       <span class="status-item">GFM Support</span>
       <span class="status-separator">|</span>
       <span class="status-item" class:unsaved={false}>
@@ -506,6 +522,11 @@
   
   .editor-textarea::placeholder {
     color: var(--text-tertiary);
+  }
+
+  .editor-textarea.word-wrap-enabled {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
   }
   
   .preview-pane {

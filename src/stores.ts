@@ -18,6 +18,7 @@ export interface AppState {
   activeDocumentId: string | null;
   theme: 'light' | 'dark';
   sidebarWidth: number;
+  wordWrap: boolean;
 }
 
 // ============================================
@@ -113,6 +114,7 @@ function createDocumentStore() {
     activeDocumentId: stored?.activeDocumentId || defaultDoc.id,
     theme: stored?.theme || 'light',
     sidebarWidth: stored?.sidebarWidth || 50,
+    wordWrap: stored?.wordWrap ?? true,
   };
 
   const { subscribe, set, update } = writable<AppState>(initialState);
@@ -242,7 +244,22 @@ function createDocumentStore() {
         sidebarWidth: Math.max(20, Math.min(80, width)),
       }));
     },
-    
+
+    // Word wrap
+    toggleWordWrap: () => {
+      update((state) => ({
+        ...state,
+        wordWrap: !state.wordWrap,
+      }));
+    },
+
+    setWordWrap: (enabled: boolean) => {
+      update((state) => ({
+        ...state,
+        wordWrap: enabled,
+      }));
+    },
+
     // Reset
     reset: () => {
       const newDoc = createDefaultDocument();

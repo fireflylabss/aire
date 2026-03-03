@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-03-03
+
+### Added
+- Word wrap toggle with keyboard shortcut (Ctrl+W)
+- Visual indicator for word wrap state in status bar
+
+### Changed
+- Simplified README documentation
+- License changed from MIT to GPL v3
+
+### Removed
+- Screenshots section from README
+- Excessive emojis and visual noise from documentation
+
 ## [1.0.0] - 2025-03-03
 
 ### Added
