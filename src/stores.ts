@@ -24,7 +24,7 @@ export interface AppState {
 // STORAGE UTILS
 // ============================================
 
-const STORAGE_KEY = 'markdown-editor-v1';
+const STORAGE_KEY = 'aire-v1';
 
 function loadFromStorage(): Partial<AppState> | null {
   try {
@@ -53,7 +53,7 @@ function saveToStorage(state: AppState): void {
 const createDefaultDocument = (): Document => ({
   id: crypto.randomUUID(),
   name: 'Untitled',
-  content: `# Welcome to Markdown Editor
+  content: `# Welcome to Aire
 
 This is a **modern**, _fluid_ markdown editor with full GitHub Flavored Markdown support.
 
