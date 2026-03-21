@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-21
+
+### Added
+- Unified writing + preview command bar with grouped icon actions, compact density, and responsive overflow behavior.
+- Interactive markdown table inserter (grid selector up to 10x10) with live hover dimensions and fast insertion.
+- Emoji insertion popup integrated into the toolbar with cursor-aware insertion.
+- Import/export split into dedicated interactive menus (import markdown, export markdown/html/pdf).
+- Global search panel improvements: centered modal layout, result count, close control, Enter-to-open-first-result, and Escape handling.
+- Keyboard productivity shortcuts expanded (underline, strikethrough, heading levels, list helpers) plus Tab/Shift+Tab indentation handling for single and multiline selections.
+- App shell polish: explicit app brand in header (`Aire`), updated browser title (`Aire — Write`), and minimalist horizontal tab scrollbar for large tab sets.
+
+### Changed
+- Internal state model normalized to single-scope documents (workspace model removed from runtime store API and state shape).
+- Persistence migrated from legacy `aire-v1` shape to normalized `aire-v2` shape, with backward-compatible loading from old data.
+- Maximum tab capacity raised to 32 and enforced consistently across document creation/import paths.
+- Word wrap behavior aligned across editor and preview; TOC text wrapping behavior hardened for long heading content.
+- TOC visual design refreshed (denser structure, cleaner header hierarchy, improved row separation/hover readability).
+- Toolbar spacing and divider rhythm refined for cleaner scan and better affordance without extra chrome.
+
+### Fixed
+- Eliminated store/UI mismatch where workspace logic remained in the store even after workspace controls were removed from UI.
+- Removed dead/orphaned UI state and handlers that could mask regressions during maintenance.
+- Fixed multiple interaction edge cases around popover closing logic and keyboard escape behavior.
+- Stabilized tab rename/close/new flows under high tab counts with consistent active-document fallback behavior.
+- Resolved search panel QoL regressions (predictable focus/close/open flow via keyboard).
+
+### Historical Context (from older versions)
+- Consolidates prior 1.0.x and 1.1.x evolution into a stable 1.2.0 baseline: command palette maturity, advanced markdown rendering (KaTeX/callouts/tables/tasks), autosave/history continuity, and compact dark-first UI direction.
+- Previous exploratory workspace/history/sync surface area was pruned or normalized where it no longer matched product direction, reducing legacy complexity and behavioral drift.
+- Legacy status-bar verbosity and duplicated toolbar controls were simplified into clearer, denser interactions while preserving core writing and export workflows.
+
 ## [1.1.0] - 2026-03-04
 
 ### Added
