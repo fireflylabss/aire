@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import type { Writable, Readable } from 'svelte/store';
+import type { Readable } from 'svelte/store';
 
 // ============================================
 // TYPES
@@ -9,15 +9,8 @@ export interface Document {
   id: string;
   name: string;
   content: string;
-  workspaceId: string;
   createdAt: number;
   updatedAt: number;
-}
-
-export interface Workspace {
-  id: string;
-  name: string;
-  createdAt: number;
 }
 
 export interface HistorySnapshot {
@@ -27,9 +20,7 @@ export interface HistorySnapshot {
 
 export interface AppState {
   documents: Document[];
-  workspaces: Workspace[];
   activeDocumentId: string | null;
-  activeWorkspaceId: string;
   theme: 'light' | 'dark';
   sidebarWidth: number;
   wordWrap: boolean;
@@ -40,43 +31,23 @@ export interface AppState {
 // STORAGE UTILS
 // ============================================
 
-const STORAGE_KEY = 'aire-v1';
+const STORAGE_KEY = 'aire-v2';
+const LEGACY_STORAGE_KEY = 'aire-v1';
 const MAX_HISTORY_ENTRIES = 20;
+const MAX_TABS = 32;
 
-const createDefaultWorkspace = (): Workspace => ({
-  id: crypto.randomUUID(),
-  name: 'Main',
-  createdAt: Date.now(),
-});
+type LegacyDocument = Partial<Document> & { workspaceId?: string };
+type StoredStateLike = Partial<AppState> & {
+  documents?: LegacyDocument[];
+  activeWorkspaceId?: string;
+  workspaces?: unknown[];
+};
 
-function loadFromStorage(): Partial<AppState> | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('Failed to load from localStorage:', e);
-  }
-  return null;
-}
+const now = () => Date.now();
 
-function saveToStorage(state: AppState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error('Failed to save to localStorage:', e);
-  }
-}
-
-// ============================================
-// DEFAULTS
-// ============================================
-
-const createDefaultDocument = (workspaceId: string): Document => ({
+const createDefaultDocument = (): Document => ({
   id: crypto.randomUUID(),
   name: 'Untitled',
-  workspaceId,
   content: `# Welcome to Aire
 
 This is a **modern**, _fluid_ markdown editor with full GitHub Flavored Markdown support.
@@ -120,88 +91,134 @@ console.log(greet('World'));
 
 Enjoy writing! 🚀
 `,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
+  createdAt: now(),
+  updatedAt: now(),
 });
+
+function safeParse(raw: string | null): StoredStateLike | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StoredStateLike;
+  } catch (e) {
+    console.error('Failed to parse localStorage state:', e);
+    return null;
+  }
+}
+
+function normalizeDocuments(input: LegacyDocument[] | undefined): Document[] {
+  if (!Array.isArray(input) || input.length === 0) return [createDefaultDocument()];
+  const ts = now();
+  const docs = input.map((doc, index) => ({
+    id: typeof doc.id === 'string' && doc.id.trim() ? doc.id : crypto.randomUUID(),
+    name: typeof doc.name === 'string' && doc.name.trim() ? doc.name.trim() : index === 0 ? 'Untitled' : `Untitled ${index + 1}`,
+    content: typeof doc.content === 'string' ? doc.content : '',
+    createdAt: typeof doc.createdAt === 'number' ? doc.createdAt : ts,
+    updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : ts,
+  }));
+  return docs.slice(0, MAX_TABS);
+}
+
+function normalizeHistory(historyByDoc: unknown): Record<string, HistorySnapshot[]> {
+  if (!historyByDoc || typeof historyByDoc !== 'object') return {};
+  const entries = Object.entries(historyByDoc as Record<string, unknown>).map(([docId, snapshots]) => {
+    if (!Array.isArray(snapshots)) return [docId, [] as HistorySnapshot[]] as const;
+    const normalized = snapshots
+      .filter((entry): entry is { content: unknown; timestamp: unknown } => !!entry && typeof entry === 'object')
+      .map((entry) => ({
+        content: typeof entry.content === 'string' ? entry.content : '',
+        timestamp: typeof entry.timestamp === 'number' ? entry.timestamp : now(),
+      }))
+      .slice(-MAX_HISTORY_ENTRIES);
+    return [docId, normalized] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+function loadFromStorage(): AppState {
+  const rawV2 = safeParse(localStorage.getItem(STORAGE_KEY));
+  const rawV1 = rawV2 ? null : safeParse(localStorage.getItem(LEGACY_STORAGE_KEY));
+  const stored = rawV2 || rawV1;
+
+  const documents = normalizeDocuments(stored?.documents);
+  const activeDocumentId =
+    typeof stored?.activeDocumentId === 'string' && documents.some((d) => d.id === stored.activeDocumentId)
+      ? stored.activeDocumentId
+      : documents[0]?.id || null;
+
+  return {
+    documents,
+    activeDocumentId,
+    theme: stored?.theme === 'dark' ? 'dark' : 'light',
+    sidebarWidth: typeof stored?.sidebarWidth === 'number' ? stored.sidebarWidth : 50,
+    wordWrap: stored?.wordWrap ?? true,
+    historyByDoc: normalizeHistory(stored?.historyByDoc),
+  };
+}
+
+function saveToStorage(state: AppState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+}
 
 // ============================================
 // STORES
 // ============================================
 
 function createDocumentStore() {
-  const stored = loadFromStorage();
-  const defaultWorkspace = createDefaultWorkspace();
-  const workspaces = stored?.workspaces?.length ? stored.workspaces : [defaultWorkspace];
-  const activeWorkspaceId = stored?.activeWorkspaceId || workspaces[0].id;
-  const defaultDoc = createDefaultDocument(activeWorkspaceId);
-  const storedDocs = stored?.documents?.length ? stored.documents : [defaultDoc];
-  const normalizedDocs = storedDocs.map((doc) => ({
-    ...doc,
-    workspaceId: doc.workspaceId || activeWorkspaceId,
-  }));
-  
-  const initialState: AppState = {
-    documents: normalizedDocs,
-    workspaces,
-    activeDocumentId: stored?.activeDocumentId || normalizedDocs[0]?.id || null,
-    activeWorkspaceId,
-    theme: stored?.theme || 'light',
-    sidebarWidth: stored?.sidebarWidth || 50,
-    wordWrap: stored?.wordWrap ?? true,
-    historyByDoc: stored?.historyByDoc || {},
-  };
-
+  const initialState: AppState = loadFromStorage();
   const { subscribe, set, update } = writable<AppState>(initialState);
 
-  // Auto-save to localStorage
   subscribe((state) => {
     saveToStorage(state);
   });
 
   return {
     subscribe,
-    
-    // Document actions
+
     createDocument: (name?: string, content?: string) => {
       const newDoc: Document = {
         id: crypto.randomUUID(),
         name: name || 'Untitled',
         content: content || '',
-        workspaceId: initialState.activeWorkspaceId,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now(),
+        updatedAt: now(),
       };
-      
+      let createdId: string | null = null;
+
       update((state) => {
-        const scopedDoc = { ...newDoc, workspaceId: state.activeWorkspaceId };
+        if (state.documents.length >= MAX_TABS) return state;
+        createdId = newDoc.id;
         return {
           ...state,
-          documents: [...state.documents, scopedDoc],
-          activeDocumentId: scopedDoc.id,
+          documents: [...state.documents, newDoc],
+          activeDocumentId: newDoc.id,
         };
       });
-      
-      return newDoc.id;
+
+      return createdId;
     },
-    
+
     updateDocument: (id: string, updates: Partial<Document>) => {
       update((state) => ({
         ...state,
         documents: state.documents.map((doc) =>
           doc.id === id
-            ? { ...doc, ...updates, updatedAt: Date.now() }
+            ? { ...doc, ...updates, updatedAt: now() }
             : doc
         ),
       }));
     },
-    
+
     updateDocumentContent: (id: string, content: string) => {
       update((state) => {
-        const now = Date.now();
+        const timestamp = now();
         const previousDoc = state.documents.find((doc) => doc.id === id);
         const documents = state.documents.map((doc) =>
           doc.id === id
-            ? { ...doc, content, updatedAt: now }
+            ? { ...doc, content, updatedAt: timestamp }
             : doc
         );
         const previousHistory = state.historyByDoc[id] || [];
@@ -211,7 +228,7 @@ function createDocumentStore() {
               ...state.historyByDoc,
               [id]: [
                 ...previousHistory,
-                { content: previousDoc.content, timestamp: now },
+                { content: previousDoc.content, timestamp },
               ].slice(-MAX_HISTORY_ENTRIES),
             }
           : state.historyByDoc;
@@ -233,131 +250,75 @@ function createDocumentStore() {
           ...state,
           documents: state.documents.map((doc) =>
             doc.id === id
-              ? { ...doc, content: snapshot.content, updatedAt: Date.now() }
+              ? { ...doc, content: snapshot.content, updatedAt: now() }
               : doc
           ),
         };
       });
     },
-    
+
     renameDocument: (id: string, name: string) => {
       update((state) => ({
         ...state,
         documents: state.documents.map((doc) =>
           doc.id === id
-            ? { ...doc, name, updatedAt: Date.now() }
+            ? { ...doc, name, updatedAt: now() }
             : doc
         ),
       }));
     },
-    
+
     deleteDocument: (id: string) => {
       update((state) => {
-        const newDocuments = state.documents.filter((doc) => doc.id !== id);
-        const newActiveId =
-          state.activeDocumentId === id
-            ? newDocuments.length > 0
-              ? newDocuments[0].id
-              : null
-            : state.activeDocumentId;
-        
-        // If no documents left, create a new one
-        if (newDocuments.length === 0) {
-          const newDoc = createDefaultDocument(state.activeWorkspaceId);
+        const documents = state.documents.filter((doc) => doc.id !== id);
+        if (documents.length === 0) {
+          const fallback = createDefaultDocument();
           return {
             ...state,
-            documents: [newDoc],
-            activeDocumentId: newDoc.id,
+            documents: [fallback],
+            activeDocumentId: fallback.id,
+            historyByDoc: {},
           };
         }
-        
+
+        const activeDocumentId = state.activeDocumentId === id ? documents[0].id : state.activeDocumentId;
         return {
           ...state,
-          documents: newDocuments,
-          activeDocumentId: newActiveId,
-          historyByDoc: Object.fromEntries(
-            Object.entries(state.historyByDoc).filter(([docId]) => docId !== id)
-          ),
+          documents,
+          activeDocumentId,
+          historyByDoc: Object.fromEntries(Object.entries(state.historyByDoc).filter(([docId]) => docId !== id)),
         };
       });
     },
 
-    createWorkspace: (name?: string) => {
-      const newWorkspace: Workspace = {
-        id: crypto.randomUUID(),
-        name: name?.trim() || 'New workspace',
-        createdAt: Date.now(),
-      };
-      update((state) => ({
-        ...state,
-        workspaces: [...state.workspaces, newWorkspace],
-        activeWorkspaceId: newWorkspace.id,
-        activeDocumentId: null,
-      }));
-      return newWorkspace.id;
-    },
-
-    setActiveWorkspace: (workspaceId: string) => {
-      update((state) => {
-        const docsInWorkspace = state.documents.filter((doc) => doc.workspaceId === workspaceId);
-        const activeDocumentStillVisible = docsInWorkspace.some((doc) => doc.id === state.activeDocumentId);
-        return {
-          ...state,
-          activeWorkspaceId: workspaceId,
-          activeDocumentId: activeDocumentStillVisible ? state.activeDocumentId : docsInWorkspace[0]?.id || null,
-        };
-      });
-    },
-
-    renameWorkspace: (workspaceId: string, name: string) => {
-      update((state) => ({
-        ...state,
-        workspaces: state.workspaces.map((workspace) =>
-          workspace.id === workspaceId ? { ...workspace, name: name.trim() || workspace.name } : workspace
-        ),
-      }));
-    },
-
-    moveDocumentToWorkspace: (docId: string, workspaceId: string) => {
-      update((state) => ({
-        ...state,
-        documents: state.documents.map((doc) =>
-          doc.id === docId ? { ...doc, workspaceId, updatedAt: Date.now() } : doc
-        ),
-      }));
-    },
-    
     setActiveDocument: (id: string) => {
       update((state) => ({
         ...state,
         activeDocumentId: id,
       }));
     },
-    
-    // Tab reordering
+
     reorderDocuments: (newOrder: Document[]) => {
       update((state) => ({
         ...state,
         documents: newOrder,
       }));
     },
-    
-    // Theme
+
     toggleTheme: () => {
       update((state) => ({
         ...state,
         theme: state.theme === 'light' ? 'dark' : 'light',
       }));
     },
-    
+
     setTheme: (theme: 'light' | 'dark') => {
       update((state) => ({
         ...state,
         theme,
       }));
     },
-    
-    // Sidebar width
+
     setSidebarWidth: (width: number) => {
       update((state) => ({
         ...state,
@@ -365,7 +326,6 @@ function createDocumentStore() {
       }));
     },
 
-    // Word wrap
     toggleWordWrap: () => {
       update((state) => ({
         ...state,
@@ -380,15 +340,11 @@ function createDocumentStore() {
       }));
     },
 
-    // Reset
     reset: () => {
-      const newWorkspace = createDefaultWorkspace();
-      const newDoc = createDefaultDocument(newWorkspace.id);
+      const doc = createDefaultDocument();
       set({
-        documents: [newDoc],
-        workspaces: [newWorkspace],
-        activeDocumentId: newDoc.id,
-        activeWorkspaceId: newWorkspace.id,
+        documents: [doc],
+        activeDocumentId: doc.id,
         theme: 'light',
         sidebarWidth: 50,
         wordWrap: true,
@@ -400,7 +356,6 @@ function createDocumentStore() {
 
 export const appStore = createDocumentStore();
 
-// Derived stores
 export const activeDocument: Readable<Document | null> = derived(
   appStore,
   ($appStore) =>
@@ -414,5 +369,5 @@ export const documentCount: Readable<number> = derived(
 
 export const hasUnsavedChanges: Readable<boolean> = derived(
   appStore,
-  () => false // Always auto-saved
+  () => false
 );
