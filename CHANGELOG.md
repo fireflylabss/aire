@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-03-21
+## [0.2.1] - 2026-03-21
+
+### Added
+- Fullscreen mode toggle button in toolbar (desktop and mobile) with visual feedback showing Maximize/Minimize icons based on current state.
+
+### Changed
+- Toolbar layout reorganized into two distinct sections: formatting controls on the left and view/preview controls on the right, with flexible spacing between them for better visual separation.
+
+### Fixed
+- Scroll/overflow issue where status bar was being pushed down when writing long content. Editor and line numbers now properly constrain height and allow independent scrolling.
+
+## [0.2.0] - 2026-03-21
 
 ### Added
 - Unified writing + preview command bar with grouped icon actions, compact density, and responsive overflow behavior.
@@ -38,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Previous exploratory workspace/history/sync surface area was pruned or normalized where it no longer matched product direction, reducing legacy complexity and behavioral drift.
 - Legacy status-bar verbosity and duplicated toolbar controls were simplified into clearer, denser interactions while preserving core writing and export workflows.
 
-## [1.1.0] - 2026-03-04
+## [0.1.0] - 2026-03-04
 
 ### Added
 - Command palette (Ctrl/Cmd+K) with searchable commands for new doc, download, word wrap, etc., plus keyboard navigation and backdrop dismiss.
@@ -52,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enlarged/respaced task list checkboxes in preview to improve hit area and alignment.
 - Subtle, smoother accent animations applied to buttons, tabs, code toolbars, and resizer interactions.
 
-## [1.0.1] - 2025-03-03
+## [0.0.1] - 2025-03-03
 
 ### Added
 - Word wrap toggle with keyboard shortcut (Ctrl+W)
@@ -66,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Screenshots section from README
 - Excessive emojis and visual noise from documentation
 
-## [1.0.0] - 2025-03-03
+## [0.0.0] - 2025-03-03
 
 ### Added
 

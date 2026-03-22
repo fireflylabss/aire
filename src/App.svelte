@@ -40,7 +40,9 @@
     Smile,
     Ellipsis,
     ScanText,
-    Underline
+    Underline,
+    Maximize,
+    Minimize
   } from 'lucide-svelte';
   import { appStore, activeDocument } from './stores';
   import type { Document } from './stores';
@@ -221,6 +223,7 @@
   let searchQuery = '';
   let replaceQuery = '';
   let showTocPanel = false;
+  let isFullscreen = false;
   let toc: { level: number; text: string; id: string }[] = [];
   let showTableMenu = false;
   let tableAnchorEl: HTMLButtonElement | null = null;
@@ -1178,6 +1181,23 @@
     }
   }
   
+  // Toggle fullscreen mode
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        isFullscreen = true;
+      }).catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        isFullscreen = false;
+      }).catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
+    }
+  }
+  
   // Keyboard shortcuts
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -1306,11 +1326,18 @@
     window.addEventListener('mousedown', handleGlobalClick);
     window.addEventListener('keydown', handleKeydown);
     
+    // Listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      isFullscreen = !!document.fullscreenElement;
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
     return () => {
       window.removeEventListener('mousemove', handleResizing);
       window.removeEventListener('mouseup', stopResizing);
       window.removeEventListener('mousedown', handleGlobalClick);
       window.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   });
 </script>
@@ -1385,83 +1412,98 @@
     <div class="toolbar-host" bind:this={toolbarHostEl}>
       <div class="format-toolbar unified-toolbar" bind:this={formatToolbarEl}>
         <div class="toolbar-main desktop-toolbar">
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('**')} title="Bold"><Bold size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('*')} title="Italic"><Italic size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('~~', '~~', 'text')} title="Strikethrough"><Strikethrough size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('<u>', '</u>', 'text')} title="Underline"><Underline size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
+          <!-- Left side: Formatting controls -->
+          <div class="toolbar-left">
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('**')} title="Bold"><Bold size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('*')} title="Italic"><Italic size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('~~', '~~', 'text')} title="Strikethrough"><Strikethrough size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('<u>', '</u>', 'text')} title="Underline"><Underline size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={() => insertHeading(1)} title="Header 1"><Heading1 size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => insertHeading(2)} title="Header 2"><Heading2 size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => insertHeading(3)} title="Header 3"><Heading3 size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('<sub>', '</sub>', 'sub')} title="Subtext"><Subscript size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => wrapSelection('<sup>', '</sup>', 'sup')} title="Supertext"><Superscript size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={() => insertHeading(1)} title="Header 1"><Heading1 size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => insertHeading(2)} title="Header 2"><Heading2 size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => insertHeading(3)} title="Header 3"><Heading3 size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('<sub>', '</sub>', 'sub')} title="Subtext"><Subscript size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => wrapSelection('<sup>', '</sup>', 'sup')} title="Supertext"><Superscript size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" bind:this={tableAnchorEl} class:active-toolbar={showTableMenu} on:click={openTableMenu} title="Create table"><Table2 size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={insertImageSnippet} title="Insert image"><ImagePlus size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={insertLinkSnippet} title="Insert link"><Link2 size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={formatUrlAction} title="Format URL"><ScanText size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" bind:this={tableAnchorEl} class:active-toolbar={showTableMenu} on:click={openTableMenu} title="Create table"><Table2 size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={insertImageSnippet} title="Insert image"><ImagePlus size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={insertLinkSnippet} title="Insert link"><Link2 size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={formatUrlAction} title="Format URL"><ScanText size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={applyOrderedList} title="Ordered list"><ListOrdered size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('- ')} title="Unordered list"><List size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('- [ ] ')} title="Task list"><ListTodo size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={applyOrderedList} title="Ordered list"><ListOrdered size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('- ')} title="Unordered list"><List size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('- [ ] ')} title="Task list"><ListTodo size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={insertCodeBlock} title="Code block"><SquareCode size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={insertInlineCode} title="Inline code"><Code size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('> ')} title="Quote"><Quote size={16} /></button>
-            <button class="toolbar-icon-btn" on:click={insertHorizontalRule} title="Horizontal rule"><Minus size={16} /></button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={insertCodeBlock} title="Code block"><SquareCode size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={insertInlineCode} title="Inline code"><Code size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" on:click={() => applyPrefixToSelectedLines('> ')} title="Quote"><Quote size={16} /></button>
+              <button class="toolbar-icon-btn" on:click={insertHorizontalRule} title="Horizontal rule"><Minus size={16} /></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="toolbar-icon-btn" bind:this={emojiAnchorEl} class:active-toolbar={showEmojiMenu} on:click={openEmojiMenu} title="Insert emoji"><Smile size={16} /></button>
+            <div class="toolbar-group">
+              <button class="toolbar-icon-btn" bind:this={emojiAnchorEl} class:active-toolbar={showEmojiMenu} on:click={openEmojiMenu} title="Insert emoji"><Smile size={16} /></button>
+            </div>
           </div>
-          <span class="toolbar-section-gap" aria-hidden="true"></span>
 
-          <div class="toolbar-group">
-            <button class="preview-icon-btn animate-fade-in" class:active-accent={$appStore.wordWrap} on:click={() => appStore.toggleWordWrap()} title="Toggle word wrap (Ctrl+W)">
-              <WrapText size={17} />
-            </button>
-            <button class="preview-icon-btn animate-fade-in" class:active-accent={showTocPanel} on:click={() => (showTocPanel = !showTocPanel)} title="Table of Contents">
-              <AlignLeft size={17} />
-            </button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
-          <div class="toolbar-group">
-            <button class="preview-icon-btn animate-fade-in" bind:this={importMenuAnchorEl} class:active-accent={showImportMenu} on:click={toggleImportMenu} title="Imports">
-              <Upload size={17} />
-            </button>
-            <button class="preview-icon-btn animate-fade-in" bind:this={exportMenuAnchorEl} class:active-accent={showExportMenu} on:click={toggleExportMenu} title="Exports">
-              <Download size={17} />
-            </button>
-          </div>
-          <span class="toolbar-divider" aria-hidden="true"></span>
-          <div class="toolbar-group">
-            <button class="preview-icon-btn animate-fade-in" on:click={() => appStore.toggleTheme()} title="Toggle theme (Ctrl+D)">
-              {#if $appStore.theme === 'dark'}
-                <Sun size={17} />
-              {:else}
-                <Moon size={17} />
-              {/if}
-            </button>
+          <!-- Spacer -->
+          <div class="toolbar-spacer"></div>
+
+          <!-- Right side: View/Preview controls -->
+          <div class="toolbar-right">
+            <div class="toolbar-group">
+              <button class="preview-icon-btn animate-fade-in" class:active-accent={$appStore.wordWrap} on:click={() => appStore.toggleWordWrap()} title="Toggle word wrap (Ctrl+W)">
+                <WrapText size={17} />
+              </button>
+              <button class="preview-icon-btn animate-fade-in" class:active-accent={showTocPanel} on:click={() => (showTocPanel = !showTocPanel)} title="Table of Contents">
+                <AlignLeft size={17} />
+              </button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="preview-icon-btn animate-fade-in" bind:this={importMenuAnchorEl} class:active-accent={showImportMenu} on:click={toggleImportMenu} title="Imports">
+                <Upload size={17} />
+              </button>
+              <button class="preview-icon-btn animate-fade-in" bind:this={exportMenuAnchorEl} class:active-accent={showExportMenu} on:click={toggleExportMenu} title="Exports">
+                <Download size={17} />
+              </button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="toolbar-group">
+              <button class="preview-icon-btn animate-fade-in" on:click={() => appStore.toggleTheme()} title="Toggle theme (Ctrl+D)">
+                {#if $appStore.theme === 'dark'}
+                  <Sun size={17} />
+                {:else}
+                  <Moon size={17} />
+                {/if}
+              </button>
+              <button class="preview-icon-btn animate-fade-in" on:click={toggleFullscreen} title="Toggle fullscreen">
+                {#if isFullscreen}
+                  <Minimize size={17} />
+                {:else}
+                  <Maximize size={17} />
+                {/if}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1500,6 +1542,13 @@
                   <Sun size={16} />
                 {:else}
                   <Moon size={16} />
+                {/if}
+              </button>
+              <button class="toolbar-icon-btn" on:click={() => { toggleFullscreen(); showToolbarOverflowMenu = false; }} title="Toggle fullscreen">
+                {#if isFullscreen}
+                  <Minimize size={16} />
+                {:else}
+                  <Maximize size={16} />
                 {/if}
               </button>
             </div>
@@ -1759,7 +1808,7 @@
   .app-container {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh;
     width: 100vw;
     overflow: hidden;
     background: transparent;
@@ -2001,10 +2050,14 @@
 
   .editor-pane {
     border-right: 1px solid var(--border-subtle);
+    overflow: hidden;
+    min-height: 0;
   }
 
   .preview-pane {
     flex: 1;
+    overflow: hidden;
+    min-height: 0;
   }
 
   .format-toolbar {
@@ -2017,17 +2070,19 @@
     background: color-mix(in srgb, var(--bg-sidebar) 70%, var(--bg-surface));
     overflow-x: auto;
     overflow-y: visible;
+    width: 100%;
   }
 
   .unified-toolbar {
     justify-content: flex-start;
+    width: 100%;
   }
 
   .toolbar-main {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: max-content;
+    width: 100%;
     flex-wrap: nowrap;
   }
 
@@ -2048,6 +2103,19 @@
   }
 
   .toolbar-section-gap { width: 38px; flex-shrink: 0; }
+
+  .toolbar-left,
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: nowrap;
+  }
+
+  .toolbar-spacer {
+    flex: 1 1 auto;
+    min-width: 40px;
+  }
 
   .toolbar-icon-btn {
     width: 28px;
@@ -2203,7 +2271,10 @@
   }
 
   .line-numbers {
-    overflow: hidden;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
     user-select: none;
     border-right: 1px solid var(--border-subtle);
     background: color-mix(in srgb, var(--bg-sidebar) 55%, transparent);
@@ -2212,6 +2283,23 @@
   .line-number {
     height: 1.7em;
     line-height: 1.7;
+  }
+
+  .line-numbers::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .line-numbers::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .line-numbers::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--text-secondary) 30%, transparent);
+    border-radius: 3px;
+  }
+
+  .line-numbers::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--text-secondary) 50%, transparent);
   }
 
   .editor-textarea {
@@ -2230,6 +2318,7 @@
     white-space: pre;
     overflow-wrap: normal;
     overflow-x: auto;
+    overflow-y: auto;
   }
 
   .editor-textarea::placeholder {
@@ -2251,6 +2340,7 @@
     overflow: auto;
     padding: 2.1rem 2.3rem;
     min-height: 0;
+    height: 100%;
     background:
       radial-gradient(circle at top right, color-mix(in srgb, var(--accent-primary) 10%, transparent), transparent 38%),
       var(--bg-surface);
@@ -2463,6 +2553,7 @@
 
   .status-bar {
     min-height: 36px;
+    flex-shrink: 0;
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
     background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
