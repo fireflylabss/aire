@@ -35,6 +35,7 @@ const STORAGE_KEY = 'aire-v2';
 const LEGACY_STORAGE_KEY = 'aire-v1';
 const MAX_HISTORY_ENTRIES = 20;
 const MAX_TABS = 32;
+const HISTORY_DEBOUNCE_MS = 2000;
 
 type LegacyDocument = Partial<Document> & { workspaceId?: string };
 type StoredStateLike = Partial<AppState> & {
@@ -148,7 +149,7 @@ function loadFromStorage(): AppState {
   return {
     documents,
     activeDocumentId,
-    theme: stored?.theme === 'dark' ? 'dark' : 'light',
+    theme: stored?.theme === 'light' ? 'light' : 'dark',
     sidebarWidth: typeof stored?.sidebarWidth === 'number' ? stored.sidebarWidth : 50,
     wordWrap: stored?.wordWrap ?? true,
     historyByDoc: normalizeHistory(stored?.historyByDoc),
@@ -222,7 +223,9 @@ function createDocumentStore() {
             : doc
         );
         const previousHistory = state.historyByDoc[id] || [];
-        const shouldAppend = previousDoc && previousDoc.content !== content;
+        const lastSnapshot = previousHistory[previousHistory.length - 1];
+        const timeSinceLast = lastSnapshot ? timestamp - lastSnapshot.timestamp : Infinity;
+        const shouldAppend = previousDoc && previousDoc.content !== content && timeSinceLast >= HISTORY_DEBOUNCE_MS;
         const historyByDoc = shouldAppend
           ? {
               ...state.historyByDoc,
@@ -273,11 +276,12 @@ function createDocumentStore() {
         const documents = state.documents.filter((doc) => doc.id !== id);
         if (documents.length === 0) {
           const fallback = createDefaultDocument();
+          const { [id]: _removed, ...remainingHistory } = state.historyByDoc;
           return {
             ...state,
             documents: [fallback],
             activeDocumentId: fallback.id,
-            historyByDoc: {},
+            historyByDoc: remainingHistory,
           };
         }
 
@@ -345,7 +349,7 @@ function createDocumentStore() {
       set({
         documents: [doc],
         activeDocumentId: doc.id,
-        theme: 'light',
+        theme: 'dark',
         sidebarWidth: 50,
         wordWrap: true,
         historyByDoc: {},
