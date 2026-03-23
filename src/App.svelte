@@ -31,7 +31,7 @@
     ListOrdered,
     ListTodo,
     Quote,
-    AlignLeft,
+
     Strikethrough,
     Table2,
     ImagePlus,
@@ -42,7 +42,10 @@
     ScanText,
     Underline,
     Maximize,
-    Minimize
+    Minimize,
+    Eye,
+    Columns,
+    PenLine
   } from 'lucide-svelte';
   import { appStore, activeDocument } from './stores';
   import type { Document } from './stores';
@@ -194,9 +197,8 @@
   marked.setOptions({
     gfm: true,
     breaks: true,
-    headerIds: true,
-    mangle: false,
     pedantic: false,
+    async: false,
   });
   
   // ============================================
@@ -210,7 +212,7 @@
   let editingNameValue = '';
   let isResizing = false;
   let sidebarWidth = 50;
-  let tocWidth = 22;
+
   let liveMessage = '';
   let showPalette = false;
   let paletteFilter = '';
@@ -222,9 +224,7 @@
   let showSearchPanel = false;
   let searchQuery = '';
   let replaceQuery = '';
-  let showTocPanel = false;
   let isFullscreen = false;
-  let toc: { level: number; text: string; id: string }[] = [];
   let showTableMenu = false;
   let tableAnchorEl: HTMLButtonElement | null = null;
   let tableHoverRows = 0;
@@ -246,6 +246,7 @@
   let toolbarHostEl: HTMLDivElement | null = null;
   let importInputEl: HTMLInputElement | null = null;
   let isEditorDragOver = false;
+  let viewMode: 'write' | 'preview' | 'split' = 'split';
   let uiZoom = 100;
   let showMobileDevNotice = false;
   const MAX_TABS_PER_WORKSPACE = 32;
@@ -257,7 +258,7 @@
   $: visibleDocuments = $appStore.documents;
   $: workspaceTabCount = visibleDocuments.length;
   $: canCreateMoreTabs = workspaceTabCount < MAX_TABS_PER_WORKSPACE;
-  $: renderedMarkdown = currentDoc ? marked.parse(currentDoc.content) : '';
+  $: renderedMarkdown = currentDoc ? (marked.parse(currentDoc.content) as string) : '';
   $: lineCount = currentDoc ? currentDoc.content.split('\n').length : 1;
   $: searchResults = searchQuery.trim()
     ? $appStore.documents
@@ -282,33 +283,7 @@
   $: if (previewContainer && renderedMarkdown) {
     tick().then(() => {
       enhancePreviewBlocks();
-      updateToc();
     });
-  }
-
-  function updateToc() {
-    if (!previewContainer) return;
-    const headings = previewContainer.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    const newToc: { level: number; text: string; id: string }[] = [];
-    headings.forEach((h, i) => {
-      const level = parseInt(h.tagName.substring(1), 10);
-      const text = h.textContent || '';
-      let id = h.id;
-      if (!id) {
-        id = text.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/(^-|-$)/g, '') || `heading-${i}`;
-        h.id = id;
-      }
-      newToc.push({ level, text, id });
-    });
-    toc = newToc;
-  }
-
-  function jumpToHeading(id: string) {
-    if (!previewContainer) return;
-    const el = previewContainer.querySelector(`#${id}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
   $: if (currentDoc) {
@@ -325,7 +300,6 @@
     { id: 'toggle-wrap', label: 'Toggle word wrap', desc: 'Wrap editor lines', run: () => appStore.toggleWordWrap() },
     { id: 'focus-editor', label: 'Focus editor', desc: 'Move caret to editor', run: () => editorTextarea?.focus() },
     { id: 'search', label: 'Global search', desc: 'Search across documents', run: () => (showSearchPanel = true) },
-    { id: 'toc', label: 'Table of Contents', desc: 'Show document headings', run: () => (showTocPanel = true) },
     { id: 'export-html', label: 'Export HTML', desc: 'Save rendered document as HTML', run: handleExportHtml },
     { id: 'export-pdf', label: 'Export PDF', desc: 'Print rendered document to PDF', run: handleExportPdf },
     { id: 'zoom-in', label: 'Zoom in', desc: 'Increase editor + preview scale', run: zoomIn },
@@ -515,6 +489,16 @@
       pre.dataset.enhanced = 'true';
       pre.classList.add('code-block');
       const lines = (code.textContent || '').split('\n').length;
+      
+      // Force vertical scroll propagation for Webviews where code blocks swallow wheel events
+      pre.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          if (previewContainer) {
+            previewContainer.scrollTop += e.deltaY;
+          }
+        }
+      }, { passive: false });
 
       // Toolbar
       const toolbar = document.createElement('div');
@@ -537,19 +521,7 @@
       });
       toolbar.appendChild(copyBtn);
 
-      // Collapse toggle for long blocks
-      if (lines > 12) {
-        pre.classList.add('collapsible', 'collapsed');
-        const toggleBtn = document.createElement('button');
-        toggleBtn.type = 'button';
-        toggleBtn.className = 'code-action toggle';
-        toggleBtn.textContent = 'Expand';
-        toggleBtn.addEventListener('click', () => {
-          const isCollapsed = pre.classList.toggle('collapsed');
-          toggleBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
-        });
-        toolbar.appendChild(toggleBtn);
-      }
+
 
       pre.insertBefore(toolbar, code);
     });
@@ -689,7 +661,7 @@
   }
 
   function buildExportHtml(content: string, title: string) {
-    const previewHtml = marked.parse(content);
+    const previewHtml = marked.parse(content) as string;
     return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title><style>body{font-family:Inter,system-ui,sans-serif;margin:2rem;color:#111}main{max-width:860px;margin:0 auto}pre{background:#f4f4f4;padding:1rem;border-radius:8px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:.5rem}.callout{border-left:4px solid #4f46e5;padding:.75rem 1rem;background:#f8f8ff}@media print{body{margin:0.5in}}</style></head><body><main>${previewHtml}</main></body></html>`;
   }
 
@@ -1231,14 +1203,14 @@
       handleDownload();
     }
     
-    // Ctrl/Cmd + D: Toggle theme
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+    // Ctrl/Cmd + Shift + L: Toggle theme
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
       e.preventDefault();
       appStore.toggleTheme();
     }
     
-    // Ctrl/Cmd + W: Toggle word wrap
-    if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+    // Alt + Z: Toggle word wrap (avoids browser Ctrl+W close-tab)
+    if (e.altKey && e.key.toLowerCase() === 'z') {
       e.preventDefault();
       appStore.toggleWordWrap();
     }
@@ -1471,12 +1443,10 @@
           <!-- Right side: View/Preview controls -->
           <div class="toolbar-right">
             <div class="toolbar-group">
-              <button class="preview-icon-btn animate-fade-in" class:active-accent={$appStore.wordWrap} on:click={() => appStore.toggleWordWrap()} title="Toggle word wrap (Ctrl+W)">
+              <button class="preview-icon-btn animate-fade-in" class:active-accent={$appStore.wordWrap} on:click={() => appStore.toggleWordWrap()} title="Toggle word wrap (Alt+Z)">
                 <WrapText size={17} />
               </button>
-              <button class="preview-icon-btn animate-fade-in" class:active-accent={showTocPanel} on:click={() => (showTocPanel = !showTocPanel)} title="Table of Contents">
-                <AlignLeft size={17} />
-              </button>
+
             </div>
             <span class="toolbar-divider" aria-hidden="true"></span>
             <div class="toolbar-group">
@@ -1489,7 +1459,7 @@
             </div>
             <span class="toolbar-divider" aria-hidden="true"></span>
             <div class="toolbar-group">
-              <button class="preview-icon-btn animate-fade-in" on:click={() => appStore.toggleTheme()} title="Toggle theme (Ctrl+D)">
+              <button class="preview-icon-btn animate-fade-in" on:click={() => appStore.toggleTheme()} title="Toggle theme (Ctrl+Shift+L)">
                 {#if $appStore.theme === 'dark'}
                   <Sun size={17} />
                 {:else}
@@ -1534,7 +1504,7 @@
               <button class="toolbar-icon-btn" on:click={() => { insertHorizontalRule(); showToolbarOverflowMenu = false; }} title="Horizontal rule"><Minus size={16} /></button>
               <button class="toolbar-icon-btn" on:click={() => { openEmojiMenu(); showToolbarOverflowMenu = false; }} title="Insert emoji"><Smile size={16} /></button>
               <button class="toolbar-icon-btn" on:click={() => { appStore.toggleWordWrap(); showToolbarOverflowMenu = false; }} title="Toggle word wrap"><WrapText size={16} /></button>
-              <button class="toolbar-icon-btn" on:click={() => { showTocPanel = !showTocPanel; showToolbarOverflowMenu = false; }} title="Table of contents"><AlignLeft size={16} /></button>
+
               <button class="toolbar-icon-btn" on:click={() => { toggleImportMenu(); showToolbarOverflowMenu = false; }} title="Imports"><Upload size={16} /></button>
               <button class="toolbar-icon-btn" on:click={() => { toggleExportMenu(); showToolbarOverflowMenu = false; }} title="Exports"><Download size={16} /></button>
               <button class="toolbar-icon-btn" on:click={() => { appStore.toggleTheme(); showToolbarOverflowMenu = false; }} title="Theme">
@@ -1583,31 +1553,7 @@
             <emoji-picker on:emoji-click={handleEmojiPicked}></emoji-picker>
           </div>
         {/if}
-        {#if showImportMenu}
-          <div class="toolbar-popover compact-menu" style={importMenuStyle}>
-            <button class="menu-action-btn" on:click={() => { importInputEl?.click(); showImportMenu = false; }}>
-              <Upload size={15} />
-              <span>Import Markdown</span>
-            </button>
-          </div>
-        {/if}
 
-        {#if showExportMenu}
-          <div class="toolbar-popover compact-menu" style={exportMenuStyle}>
-            <button class="menu-action-btn" on:click={() => { handleDownload(); showExportMenu = false; }}>
-              <Download size={15} />
-              <span>Download .md</span>
-            </button>
-            <button class="menu-action-btn" on:click={() => { handleExportHtml(); showExportMenu = false; }}>
-              <FileDown size={15} />
-              <span>Export HTML</span>
-            </button>
-            <button class="menu-action-btn" on:click={() => { handleExportPdf(); showExportMenu = false; }}>
-              <FileUp size={15} />
-              <span>Export PDF</span>
-            </button>
-          </div>
-        {/if}
 
         <input bind:this={importInputEl} type="file" accept=".md,text/markdown" multiple hidden on:change={handleImportFiles} />
       </div>
@@ -1627,10 +1573,10 @@
   <!-- Workspace -->
   <div class="workspace">
     <!-- Editor Pane -->
-    <section class="editor-pane" style="width: {sidebarWidth}%">
+    <section class="editor-pane" class:hidden-pane={viewMode === 'preview'} style="width: {viewMode === 'write' ? '100%' : `${sidebarWidth}%`}">
       <div class="editor-container">
         <!-- Line Numbers -->
-        <div class="line-numbers" bind:this={lineNumbersEl}>
+        <div class="line-numbers" bind:this={lineNumbersEl} style="font-size: {Math.round((14 * uiZoom) / 100)}px">
           {#each Array(lineCount) as _, i}
             <div class="line-number">{i + 1}</div>
           {/each}
@@ -1668,12 +1614,13 @@
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div 
       class="resizer"
+      class:hidden-pane={viewMode !== 'split'}
       class:active={isResizing}
       on:mousedown={startResizing}
     ></div>
     
     <!-- Preview Pane -->
-    <section class="preview-pane">
+    <section class="preview-pane" class:hidden-pane={viewMode === 'write'}>
       <div class="preview-container" bind:this={previewContainer} class:word-wrap-enabled={$appStore.wordWrap} class:word-wrap-disabled={!$appStore.wordWrap}>
         {#if currentDoc}
           <article class="markdown-preview animate-fade-up" style="font-size: {uiZoom}%">
@@ -1696,24 +1643,7 @@
 
   </div>
 
-  {#if showTocPanel}
-    <div class="toc-overlay">
-      <aside class="toc-pane" class:word-wrap-enabled={$appStore.wordWrap} style="width: {tocWidth}%;">
-        <div class="toc-pane-header">Contents</div>
-        <div class="toc-list">
-          {#if toc.length === 0}
-            <p class="palette-desc">No headings</p>
-          {:else}
-            {#each toc as item}
-              <button class="palette-item toc-item" style="padding-left: {(item.level - 1) * 12 + 10}px;" on:click={() => jumpToHeading(item.id)}>
-                <div class="toc-item-title">{item.text}</div>
-              </button>
-            {/each}
-          {/if}
-        </div>
-      </aside>
-    </div>
-  {/if}
+
   
   <!-- Status Bar -->
   <footer class="status-bar">
@@ -1743,6 +1673,18 @@
       {/if}
     </div>
     <div class="status-right">
+      <div class="status-group">
+        <button class="status-icon-btn" class:active-accent={viewMode === 'write'} on:click={() => viewMode = 'write'} title="Write Mode">
+          <PenLine size={14} />
+        </button>
+        <button class="status-icon-btn" class:active-accent={viewMode === 'split'} on:click={() => viewMode = 'split'} title="Split Mode">
+          <Columns size={14} />
+        </button>
+        <button class="status-icon-btn" class:active-accent={viewMode === 'preview'} on:click={() => viewMode = 'preview'} title="Preview Mode">
+          <Eye size={14} />
+        </button>
+      </div>
+      <span class="status-divider"></span>
       <button class="status-icon-btn" on:click={zoomOut} title="Zoom out (Ctrl+-)">-</button>
       <button class="status-icon-readout" on:click={resetZoom} title="Reset zoom (Ctrl+0)">{uiZoom}%</button>
       <button class="status-icon-btn" on:click={zoomIn} title="Zoom in (Ctrl/Cmd +)">+</button>
@@ -1780,6 +1722,7 @@
 {/if}
 
 {#if showSearchPanel}
+  <div class="palette-backdrop" role="presentation" on:click={() => (showSearchPanel = false)}></div>
   <div class="floating-panel">
     <div class="search-panel-header">
       <h3>Global search</h3>
@@ -1798,6 +1741,54 @@
           <div class="palette-desc">{result.matches} matches</div>
         </button>
       {/each}
+    </div>
+  </div>
+{/if}
+
+{#if showImportMenu}
+  <div class="palette-backdrop" role="presentation" on:click={() => (showImportMenu = false)}></div>
+  <div class="floating-panel">
+    <div class="search-panel-header">
+      <h3>Import</h3>
+      <button class="status-icon-btn" on:click={() => (showImportMenu = false)} title="Close">×</button>
+    </div>
+    <div class="search-list" style="margin-top: 8px;">
+      <button class="palette-item" style="text-align: left;" on:click={() => { importInputEl?.click(); showImportMenu = false; }}>
+        <div class="palette-title" style="display: flex; align-items: center; gap: 8px;">
+          <Upload size={14} /> Import Markdown
+        </div>
+        <div class="palette-desc">Load .md files from your computer</div>
+      </button>
+    </div>
+  </div>
+{/if}
+
+{#if showExportMenu}
+  <div class="palette-backdrop" role="presentation" on:click={() => (showExportMenu = false)}></div>
+  <div class="floating-panel">
+    <div class="search-panel-header">
+      <h3>Export</h3>
+      <button class="status-icon-btn" on:click={() => (showExportMenu = false)} title="Close">×</button>
+    </div>
+    <div class="search-list" style="margin-top: 8px;">
+      <button class="palette-item" style="text-align: left;" on:click={() => { handleDownload(); showExportMenu = false; }}>
+        <div class="palette-title" style="display: flex; align-items: center; gap: 8px;">
+          <Download size={14} /> Download .md
+        </div>
+        <div class="palette-desc">Save the raw markdown file</div>
+      </button>
+      <button class="palette-item" style="text-align: left;" on:click={() => { handleExportHtml(); showExportMenu = false; }}>
+        <div class="palette-title" style="display: flex; align-items: center; gap: 8px;">
+          <FileDown size={14} /> Export HTML
+        </div>
+        <div class="palette-desc">Save rendered document as standalone HTML</div>
+      </button>
+      <button class="palette-item" style="text-align: left;" on:click={() => { handleExportPdf(); showExportMenu = false; }}>
+        <div class="palette-title" style="display: flex; align-items: center; gap: 8px;">
+          <FileUp size={14} /> Export PDF
+        </div>
+        <div class="palette-desc">Print rendered document to PDF</div>
+      </button>
     </div>
   </div>
 {/if}
@@ -2102,8 +2093,6 @@
     flex-shrink: 0;
   }
 
-  .toolbar-section-gap { width: 38px; flex-shrink: 0; }
-
   .toolbar-left,
   .toolbar-right {
     display: flex;
@@ -2172,32 +2161,6 @@
 
   .overflow-menu {
     width: 310px;
-  }
-
-  .compact-menu {
-    width: 220px;
-    padding: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .menu-action-btn {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    padding: 6px 8px;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .menu-action-btn:hover {
-    background: var(--bg-hover);
   }
 
   .popover-grid {
@@ -2278,6 +2241,7 @@
     user-select: none;
     border-right: 1px solid var(--border-subtle);
     background: color-mix(in srgb, var(--bg-sidebar) 55%, transparent);
+    pointer-events: none;
   }
 
   .line-number {
@@ -2341,9 +2305,7 @@
     padding: 2.1rem 2.3rem;
     min-height: 0;
     height: 100%;
-    background:
-      radial-gradient(circle at top right, color-mix(in srgb, var(--accent-primary) 10%, transparent), transparent 38%),
-      var(--bg-surface);
+    background: var(--bg-surface);
   }
 
   .preview-container.word-wrap-enabled .markdown-preview {
@@ -2387,20 +2349,6 @@
   .resizer.active::after {
     background: var(--accent-primary);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 16%, transparent);
-  }
-
-  .toc-overlay {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 34px;
-    display: flex;
-    z-index: 80;
-    pointer-events: none;
-  }
-
-  .toc-overlay > * {
-    pointer-events: auto;
   }
 
   .sr-only {
@@ -2542,7 +2490,6 @@
     gap: 8px;
   }
 
-  .toc-list,
   .search-list {
     max-height: 320px;
     overflow: auto;
@@ -2617,6 +2564,32 @@
   .status-icon-readout:hover {
     color: var(--text-primary);
     background: transparent;
+  }
+
+  .status-icon-btn.active-accent {
+    color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+    border-radius: 4px;
+  }
+
+  .status-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: color-mix(in srgb, var(--bg-hover) 30%, transparent);
+    padding: 2px;
+    border-radius: 6px;
+  }
+
+  .status-group .status-icon-btn {
+    border-radius: 4px;
+  }
+
+  .status-divider {
+    width: 1px;
+    height: 14px;
+    background: var(--border-subtle);
+    margin: 0 4px;
   }
 
   .btn {
@@ -2706,12 +2679,7 @@
     color: var(--text-primary);
   }
 
-  :global(.markdown-preview pre.collapsible.collapsed) {
-    max-height: 260px;
-    overflow: hidden;
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 72%, rgba(0, 0, 0, 0));
-    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 72%, rgba(0, 0, 0, 0));
-  }
+
 
   :global(.markdown-preview .callout) {
     border: 1px solid var(--border-subtle);
@@ -2736,54 +2704,6 @@
   :global(.markdown-preview .callout.error) { border-left-color: #ef4444; }
   :global(.markdown-preview .callout.success) { border-left-color: #22c55e; }
   :global(.markdown-preview .callout.tip) { border-left-color: #a855f7; }
-
-  .toc-pane {
-    min-width: 180px;
-    max-width: 420px;
-    border-left: none;
-    background: color-mix(in srgb, var(--bg-surface) 95%, #000 5%);
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-    border-left: 1px solid var(--border-subtle);
-    border-right: 1px solid var(--border-subtle);
-  }
-
-  .toc-pane-header {
-    height: 34px;
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    font-size: 0.74rem;
-    font-weight: 800;
-    border-bottom: 1px solid var(--border-subtle);
-    color: var(--text-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    background: color-mix(in srgb, var(--bg-sidebar) 80%, transparent);
-  }
-
-  .toc-item {
-    padding-top: 6px;
-    padding-bottom: 6px;
-    border-left: 1px solid transparent;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 38%, transparent);
-  }
-
-  .toc-item:hover {
-    border-left-color: var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  }
-
-  .toc-item-title {
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.35;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
 
   @keyframes searchPanelIn {
     from {
@@ -2816,10 +2736,6 @@
       width: 100% !important;
       height: 45%;
       min-width: 0;
-    }
-
-    .toc-overlay {
-      bottom: 28px;
     }
 
     .editor-pane {
@@ -2912,9 +2828,7 @@
   .palette-item,
   .floating-panel,
   .status-pill,
-  .toc-pane,
   .toolbar-host,
-  .toc-item,
   :global(.markdown-preview pre),
   :global(.markdown-preview code),
   :global(.markdown-preview img),

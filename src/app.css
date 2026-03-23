@@ -5,34 +5,34 @@
    ============================================ */
 
 :root {
-  --bg-app: #f5f7fb;
-  --bg-surface: #ffffff;
-  --bg-sidebar: #eef2f8;
-  --bg-active-tab: #ffffff;
+  --bg-app: #faf9f8;
+  --bg-surface: #faf9f8;
+  --bg-sidebar: #f2f1ef;
+  --bg-active-tab: #faf9f8;
   --bg-inactive-tab: transparent;
-  --bg-hover: #edf2fa;
+  --bg-hover: #eae9e7;
 
-  --text-primary: #101828;
-  --text-secondary: #475467;
-  --text-tertiary: #98a2b3;
+  --text-primary: #4a4844;
+  --text-secondary: #8c8b88;
+  --text-tertiary: #a8a6a2;
 
-  --accent-primary: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-secondary: #16a34a;
-  --border-subtle: #dbe3ef;
-  --border-focus: #2563eb;
+  --accent-primary: #3b8fe3;
+  --accent-hover: #1e7bd4;
+  --accent-secondary: #138777;
+  --border-subtle: #e6e5e3;
+  --border-focus: #3b8fe3;
 
-  --code-bg: #f3f6fb;
-  --code-text: #1f2937;
-  --code-keyword: #7c3aed;
-  --code-function: #2563eb;
-  --code-string: #059669;
-  --code-comment: #94a3b8;
-  --code-number: #d97706;
+  --code-bg: #f7f6f3;
+  --code-text: #eb5757;
+  --code-keyword: #2383e2;
+  --code-function: #d9730d;
+  --code-string: #0f7b6c;
+  --code-comment: #9e9c9c;
+  --code-number: #d9730d;
 
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 20px 48px rgba(16, 24, 40, 0.14);
+  --shadow-sm: 0 1px 2px rgba(15, 15, 15, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 15, 15, 0.08);
+  --shadow-lg: 0 10px 30px rgba(15, 15, 15, 0.12);
 
   --transition-fast: 140ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 260ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -41,34 +41,34 @@
 
 /* Dark Mode - Premium, Luxurious */
 .dark-mode {
-  --bg-app: #050505;
-  --bg-surface: #0a0a0a;
-  --bg-sidebar: #050505;
-  --bg-active-tab: #121212;
+  --bg-app: #191919;
+  --bg-surface: #191919;
+  --bg-sidebar: #202020;
+  --bg-active-tab: #191919;
   --bg-inactive-tab: transparent;
-  --bg-hover: #1a1a1a;
+  --bg-hover: #2f2f2f;
 
-  --text-primary: #e5e5e5;
-  --text-secondary: #a3a3a3;
-  --text-tertiary: #525252;
+  --text-primary: #ffffff;
+  --text-secondary: #9b9a97;
+  --text-tertiary: #71706e;
 
-  --accent-primary: #d97706;
-  --accent-hover: #b45309;
+  --accent-primary: #f97316;
+  --accent-hover: #fb923c;
   --accent-secondary: #10b981;
-  --border-subtle: #262626;
-  --border-focus: #d97706;
+  --border-subtle: #2f2f2f;
+  --border-focus: #f97316;
 
-  --code-bg: #121212;
-  --code-text: #e5e5e5;
-  --code-keyword: #f43f5e;
-  --code-function: #fbbf24;
-  --code-string: #34d399;
-  --code-comment: #6b7280;
-  --code-number: #f97316;
+  --code-bg: #202020;
+  --code-text: #ff7369;
+  --code-keyword: #2eaadc;
+  --code-function: #ffb75e;
+  --code-string: #31a478;
+  --code-comment: #71706e;
+  --code-number: #ffb75e;
 
-  --shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.05);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  --shadow-lg: 0 0 30px rgba(217, 119, 6, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 /* ============================================
@@ -86,7 +86,7 @@ html {
 }
 
 body {
-  font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
   background-color: var(--bg-app);
   background-image: none;
   color: var(--text-primary);
@@ -304,6 +304,7 @@ body, body * {
   padding: 1.2em;
   border-radius: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
   margin: 1.5em 0;
   position: relative;
 }
@@ -314,6 +315,9 @@ body, body * {
   font-size: 0.875rem;
   line-height: 1.7;
   display: block;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 /* Syntax Highlighting - Light Mode */
@@ -721,4 +725,8 @@ textarea:focus-visible {
 .dark-mode ::selection {
   background: var(--accent-primary);
   color: #000;
+}
+
+.hidden-pane {
+  display: none !important;
 }

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-23
+
+### Added
+- Added three new view modes (Write, Preview, Split) accessible via toggle buttons in the status bar, allowing users to focus on writing, previewing, or viewing both simultaneously.
+
+### Changed
+- Centralized **Import** and **Export** menus into dominant floating panels (matching the Search UX) with descriptive items and backdrop blurring, deprecating the old sparse tooltips.
+- Removed the subtle `radial-gradient` glow from the markdown preview pane to maintain absolute solid-color contrast and cleaner aesthetics.
+- Removed the automatic code block `.collapsible` feature. Large code blocks (or unclosed blocks) now render their full length without masking content or creating artificial scrolling traps.
+- Completely revamped the color palette across the entire app (Notion-style aesthetics), switched dark mode accent color from blue to orange, and softened the light mode for reduced eye strain and a premium feel.
+- Set Dark Mode as the default theme for all new workspaces/users.
+
+### Removed
+- **Table of Contents (TOC)** entirely purged from the application structure, internal logic, and toolbars to align natively with zero-distraction layout goals.
+
+### Fixed
+- Fixed a severe UX scroll trap specific to Chromium-based Webviews (like IDE browser previews) where `<pre>` blocks with `overflow-x: auto` would swallow vertical scroll inputs. Implemented explicit `overflow-y: hidden` and a forceful `deltaY` javascript bubbling bypass.
+- Fixed `app.css` code block structural integrity by hardening `white-space: pre` and `word-break: normal`, preventing global word-wrap variables from destroying line numbers and block widths inside the markdown output.
+- Fixed build warnings by removing unused CSS selectors in `App.svelte` and properly configuring `chunkSizeWarningLimit` and `manualChunks` in Vite.
 ## [0.2.1] - 2026-03-21
 
 ### Added
