@@ -2093,8 +2093,6 @@
     flex-shrink: 0;
   }
 
-  .toolbar-section-gap { width: 38px; flex-shrink: 0; }
-
   .toolbar-left,
   .toolbar-right {
     display: flex;
@@ -2163,32 +2161,6 @@
 
   .overflow-menu {
     width: 310px;
-  }
-
-  .compact-menu {
-    width: 220px;
-    padding: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .menu-action-btn {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    padding: 6px 8px;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .menu-action-btn:hover {
-    background: var(--bg-hover);
   }
 
   .popover-grid {
@@ -2379,20 +2351,6 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 16%, transparent);
   }
 
-  .toc-overlay {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 34px;
-    display: flex;
-    z-index: 80;
-    pointer-events: none;
-  }
-
-  .toc-overlay > * {
-    pointer-events: auto;
-  }
-
   .sr-only {
     position: absolute;
     width: 1px;
@@ -2532,7 +2490,6 @@
     gap: 8px;
   }
 
-  .toc-list,
   .search-list {
     max-height: 320px;
     overflow: auto;
@@ -2748,54 +2705,6 @@
   :global(.markdown-preview .callout.success) { border-left-color: #22c55e; }
   :global(.markdown-preview .callout.tip) { border-left-color: #a855f7; }
 
-  .toc-pane {
-    min-width: 180px;
-    max-width: 420px;
-    border-left: none;
-    background: color-mix(in srgb, var(--bg-surface) 95%, #000 5%);
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-    border-left: 1px solid var(--border-subtle);
-    border-right: 1px solid var(--border-subtle);
-  }
-
-  .toc-pane-header {
-    height: 34px;
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    font-size: 0.74rem;
-    font-weight: 800;
-    border-bottom: 1px solid var(--border-subtle);
-    color: var(--text-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    background: color-mix(in srgb, var(--bg-sidebar) 80%, transparent);
-  }
-
-  .toc-item {
-    padding-top: 6px;
-    padding-bottom: 6px;
-    border-left: 1px solid transparent;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 38%, transparent);
-  }
-
-  .toc-item:hover {
-    border-left-color: var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  }
-
-  .toc-item-title {
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.35;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
   @keyframes searchPanelIn {
     from {
       opacity: 0;
@@ -2827,10 +2736,6 @@
       width: 100% !important;
       height: 45%;
       min-width: 0;
-    }
-
-    .toc-overlay {
-      bottom: 28px;
     }
 
     .editor-pane {
@@ -2923,9 +2828,7 @@
   .palette-item,
   .floating-panel,
   .status-pill,
-  .toc-pane,
   .toolbar-host,
-  .toc-item,
   :global(.markdown-preview pre),
   :global(.markdown-preview code),
   :global(.markdown-preview img),

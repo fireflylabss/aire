@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.3] - 2026-03-23
+## [0.2.2] - 2026-03-23
 
 ### Added
 - Added three new view modes (Write, Preview, Split) accessible via toggle buttons in the status bar, allowing users to focus on writing, previewing, or viewing both simultaneously.
@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed a severe UX scroll trap specific to Chromium-based Webviews (like IDE browser previews) where `<pre>` blocks with `overflow-x: auto` would swallow vertical scroll inputs. Implemented explicit `overflow-y: hidden` and a forceful `deltaY` javascript bubbling bypass.
 - Fixed `app.css` code block structural integrity by hardening `white-space: pre` and `word-break: normal`, preventing global word-wrap variables from destroying line numbers and block widths inside the markdown output.
+- Fixed build warnings by removing unused CSS selectors in `App.svelte` and properly configuring `chunkSizeWarningLimit` and `manualChunks` in Vite.
 ## [0.2.1] - 2026-03-21
 
 ### Added
